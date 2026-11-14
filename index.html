@@ -497,6 +497,11 @@ dialog#player::backdrop{background:rgba(6,5,4,.88);backdrop-filter:blur(6px)}
   .hero-foot .keys{display:none}
   .pill{white-space:normal}
 }
+/* 不在屏幕附近的章节暂停循环动画 */
+.ch.off,.ch.off *{animation-play-state:paused!important}
+/* 省电模式（软件渲染、帧率低） */
+html.lite .grain{display:none}
+html.lite .hero-bg video{filter:none}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
   .js .cv{overflow:auto}
@@ -1048,6 +1053,26 @@ dialog#player::backdrop{background:rgba(6,5,4,.88);backdrop-filter:blur(6px)}
     requestAnimationFrame(tick);
     setTimeout(() => { if (o.isConnected) { root.classList.add('ready'); o.remove(); } }, 4500);
   })();
+
+  // 省电模式：没有显卡加速（软件渲染）或帧率太低时，关掉胶片颗粒和视频滤镜，让首页视频能流畅播放
+  const lite = () => document.documentElement.classList.add('lite');
+  try {
+    const gl = document.createElement('canvas').getContext('webgl');
+    const dbg = gl && gl.getExtension('WEBGL_debug_renderer_info');
+    const gpu = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '';
+    if (!gl || /Basic Render|SwiftShader|llvmpipe|Software/i.test(gpu)) lite();
+  } catch (e) {}
+  addEventListener('load', () => {
+    let n = 0; const t0 = performance.now();
+    const tick = () => { n++; if (performance.now() - t0 < 1500) requestAnimationFrame(tick); else if (n / 1.5 < 40) lite(); };
+    requestAnimationFrame(tick);
+  });
+
+  // 只让屏幕上和相邻的章节跑循环动画，其余暂停
+  {
+    const secIO = new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle('off', !e.isIntersecting)), { rootMargin: '50% 0px' });
+    document.querySelectorAll('.ch').forEach(s => secIO.observe(s));
+  }
 
   // film grain
   try {
