@@ -1172,7 +1172,17 @@ dialog#player::backdrop{background:rgba(6,5,4,.88);backdrop-filter:blur(6px)}
     if (e.isIntersecting && !reduce) { v.preload = 'auto'; v.play().catch(() => {}); } else { v.pause(); }
   }), { threshold: 0.2 });
   $$('video[data-auto]').forEach(v => vio.observe(v));
-  if (reduce) { const hv = $('.hero-bg video'); hv.removeAttribute('autoplay'); hv.pause(); }
+  // 首页背景视频一直播放：开了“减弱动画”也播；自动播放被拦（手机省电模式等）时，用户第一次点击、触摸或按键后再播
+  {
+    const hv = $('.hero-bg video');
+    hv.muted = true; hv.defaultMuted = true; hv.playsInline = true; hv.preload = 'auto';
+    const kick = () => { if (hv.paused) hv.play().catch(() => {}); };
+    kick();
+    hv.addEventListener('canplay', kick);
+    ['pointerdown', 'touchstart', 'keydown', 'wheel', 'scroll'].forEach(t => addEventListener(t, kick, { passive: true }));
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) kick(); });
+    new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) kick(); })).observe(hv);
+  }
 
   // player
   const dlg = $('#player'), pv = $('#pv'), pt = $('#pt');
